@@ -5,13 +5,16 @@ test <- read.csv("data/test.csv")
 
 cleaningData <- function(original) {
     if ("Survived" %in% colnames(original)) {
-        usefulCol <- c("Survived", "Pclass", "Sex", "Age", "SibSp","Parch","Fare","Embarked")
+        #usefulCol <- c("Survived", "Pclass", "Sex", "Age", "SibSp","Parch","Fare","Embarked")
+        usefulCol <- c("Survived", "Pclass", "Sex", "Age")
     } else {
-        usefulCol <- c("Pclass", "Sex", "Age", "SibSp","Parch","Fare","Embarked")
+        #usefulCol <- c("Pclass", "Sex", "Age", "SibSp","Parch","Fare","Embarked")
+        usefulCol <- c("Pclass", "Sex", "Age")
     }
 
-    data.matrix(fixNa(original)[, usefulCol])
-    fixNa(original)[, usefulCol]
+    data <- data.matrix(fixNa(original)[, usefulCol])
+    cbind(matrix(1, nrow(data), 1), data)
+    #fixNa(original)[, usefulCol]
 }
 
 fixNa <- function(data) {
@@ -24,7 +27,7 @@ fixNa <- function(data) {
     temp
 }
 
-sigmoid <- function(z) {
+mySigmoid <- function(z) {
     1.0 / (1.0 + exp(-z));
 }
 
@@ -38,33 +41,23 @@ gradient <- function(theta, X, y) {
 
 learning <- function(train, alpha, iterNum) {
     cleanTrain <- cleaningData(train)
-    X <- cleanTrain[, -1]
-    y <- cleanTrain[, 1]
-    theta <- cbind(rep(c(0), ncol(X)))
-    J_Hist <- rep(c(0), iterNum)
-    converge <- 0
+    X <- cleanTrain[, -2]
+    y <- cleanTrain[, 2]
+    theta <- matrix(0, ncol(X), 1)
     for (i in 1:iterNum) {
         theta <- theta - alpha * gradient(theta, X, y)
-        J_Hist[i] <- costFunc(theta, X, y)
-        # if (i > 2 && abs(J_Hist[i - 1] - J_Hist[i]) < 0.0001) {
-        #     converge <- converge + 1
-        # }
-        # 
-        # if (converge > 10) {
-        #     break
-        # }
     }
     theta
 }
 
 builtInLearning <- function(train) {
-    glm(Survived~., family = binomial(link='logit'),data=train)
+    glm(Survived~., family = binomial, data=train)
 }
 
 crossValidate <- function(validateSet, theta) {
     cleanedData <- cleaningData(validateSet)
-    X <- cleanedData[, -1]
-    y <- cleanedData[, 1]
+    X <- cleanedData[, -2]
+    y <- cleanedData[, 2]
     m <- nrow(X)
     p <- rep(c(0), m)
     correct <- 0
@@ -84,13 +77,18 @@ crossValidate <- function(validateSet, theta) {
         } else if (rate < 0.5 && y[i] == 0) {
             f_pos <- f_pos + 1
         }  
+        
+        if ((rate >= 0.5 && y[i] == 1) || (rate < 0.5 && y[i] == 0)) {
+            correct <- correct + 1
+        }
 
     }
     
     precision <- (t_pos / (t_pos + f_pos))
     recall <- (t_pos / (t_pos + f_neg))
     f1 <- (precision * recall) / (precision + recall)
-    acc <- (t_pos + t_neg) / (t_pos + t_neg + f_pos + f_neg)
+    #acc <- (t_pos + t_neg) / (t_pos + t_neg + f_pos + f_neg)
+    acc <- correct / m
     
     list(precision = precision, recall = recall, f1 = f1, acc = acc)
 }
